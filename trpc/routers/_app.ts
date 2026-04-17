@@ -1,5 +1,8 @@
 import { z } from "zod";
 import { baseProcedure, createTRPCRouter } from "../init";
+import { SendMessageCommand } from "@aws-sdk/client-sqs";
+import { getSQSClient } from "@/lib/sqs";
+
 export const appRouter = createTRPCRouter({
   send: baseProcedure
     .input(
@@ -19,9 +22,24 @@ export const appRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ input }) => {
+      const { repoUrl, envVariables } = input;
+
+      const qUrl =
+        "https://sqs.ap-south-1.amazonaws.com/864899840088/ez-deploy-queue";
+
+      const command = {
+        QueueUrl: qUrl,
+        MessageBody: JSON.stringify({
+          jobId: crypto.randomUUID(),
+          repoUrl: repoUrl,
+          envVariables: envVariables,
+        }),
+      };
+
+      await getSQSClient().send(new SendMessageCommand(command));
+
       return {
-        url: input.repoUrl,
-        variables: input.envVariables,
+        success: true,
       };
     }),
 });
